@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Downbeat — practice in time</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #17161c;
+    --panel: #201e26;
+    --panel-line: #35323d;
+    --brass: #c98a3d;
+    --brass-dim: #6e4f28;
+    --teal: #4fb3a9;
+    --red: #d9614f;
+    --text: #ede8df;
+    --text-dim: #948e9c;
+  }
+  *{ box-sizing: border-box; }
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding: 28px 18px 60px;
+  }
+  .wrap{ max-width: 640px; margin: 0 auto; }
+  header{ margin-bottom: 28px; }
+  h1{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 2.1rem;
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+  header p{
+    color: var(--text-dim);
+    margin: 0;
+    font-size: 0.95rem;
+    max-width: 46ch;
+    line-height: 1.5;
+  }
+  .panel{
+    background: var(--panel);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .panel h2{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1rem;
+    margin: 0 0 14px;
+    color: var(--text);
+  }
+  .panel h2 span{
+    color: var(--text-dim);
+    font-family: 'Inter', sans-serif;
+    font-weight: 400;
+    font-size: 0.8rem;
+    margin-left: 8px;
+  }
+  .row{ display:flex; gap:10px; flex-wrap: wrap; align-items:center; }
+  .row + .row{ margin-top: 12px; }
+  button{
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.88rem;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 10px 16px;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+  button:hover:not(:disabled){ border-color: var(--brass); }
+  button:disabled{ opacity: 0.35; cursor: not-allowed; }
+  button.primary{
+    background: var(--brass);
+    border-color: var(--brass);
+    color: #201406;
+    font-weight: 600;
+  }
+  button.primary:hover:not(:disabled){ background: #dd9a4d; }
+  input[type="file"]{
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  input[type="file"]::file-selector-button{
+    font-family: 'Inter', sans-serif;
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 8px 14px;
+    margin-right: 12px;
+    cursor: pointer;
+  }
+  select{
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    padding: 9px 10px;
+    font-size: 0.88rem;
+  }
+  .bpm-readout{
+    font-family: 'Space Mono', monospace;
+    font-size: 2.2rem;
+    line-height: 1;
+    min-width: 88px;
+    text-align: center;
+  }
+  .bpm-stepper{ display:flex; align-items:center; gap: 14px; }
+  .bpm-stepper .stepbtn{ width: 38px; height: 38px; padding:0; font-size: 1.1rem; }
+  .label{
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: lowercase;
+    letter-spacing: 0.01em;
+    margin-bottom: 6px;
+  }
+  .field{ display:flex; flex-direction:column; }
+
+  .transport{ display:flex; align-items:center; gap: 22px; }
+  .beat-light{
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--brass-dim);
+    background: transparent;
+    flex-shrink: 0;
+    transition: background 60ms linear, border-color 60ms linear;
+  }
+  .beat-light.on{
+    background: var(--brass);
+    border-color: var(--brass);
+    box-shadow: 0 0 24px 2px rgba(201,138,61,0.55);
+  }
+  .beat-light.downbeat.on{
+    background: #f2b25e;
+    box-shadow: 0 0 30px 4px rgba(242,178,94,0.7);
+  }
+  .measure-count{
+    font-family: 'Space Mono', monospace;
+    font-size: 1.3rem;
+    color: var(--text-dim);
+    min-width: 90px;
+  }
+  .measure-count b{ color: var(--text); font-weight: 700; }
+
+  .scrub{
+    -webkit-appearance:none; appearance:none;
+    width: 100%; height: 3px;
+    background: var(--panel-line);
+    border-radius: 2px;
+    outline: none;
+    margin-top: 16px;
+  }
+  .scrub::-webkit-slider-thumb{
+    -webkit-appearance:none;
+    width: 12px; height:12px; border-radius:50%;
+    background: var(--brass); cursor:pointer;
+  }
+  .time-row{ display:flex; justify-content:space-between; font-family:'Space Mono',monospace; font-size:0.75rem; color: var(--text-dim); margin-top: 4px;}
+
+  .gauge{
+    position: relative;
+    height: 64px;
+    background: var(--bg);
+    border: 1px solid var(--panel-line);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .gauge-mid{
+    position:absolute; left:50%; top:0; bottom:0; width:1px; background: var(--panel-line);
+  }
+  .gauge-zone{
+    position:absolute; top:0; bottom:0; left:calc(50% - 22px); width:44px;
+    background: rgba(79,179,169,0.12);
+  }
+  .gauge-needle{
+    position:absolute; top:6px; bottom:6px; width: 3px;
+    background: var(--text-dim);
+    left: 50%; transform: translateX(-50%);
+    border-radius: 2px;
+    transition: left 60ms ease-out, background 60ms ease-out;
+  }
+  .level-fill{
+    position:absolute; left:0; top:0; bottom:0; width:0%;
+    background: var(--teal);
+    transition: width 40ms linear, background 40ms linear;
+  }
+  .gauge-labels{ display:flex; justify-content:space-between; font-size:0.7rem; color: var(--text-dim); margin-top: 2px;}
+
+  .verdict{
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    text-align:center;
+    min-height: 2.2em;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .verdict.early{ color: var(--red); }
+  .verdict.late{ color: var(--red); }
+  .verdict.good{ color: var(--teal); }
+  .verdict.idle{ color: var(--text-dim); font-family:'Inter',sans-serif; font-weight:400; font-size:0.95rem; }
+
+  .stats{ display:flex; gap: 22px; margin-top: 4px; }
+  .stat{ text-align:left; }
+  .stat .n{ font-family:'Space Mono',monospace; font-size: 1.15rem; }
+  .stat .l{ font-size: 0.72rem; color: var(--text-dim); }
+
+  .history{ display:flex; gap:6px; margin-top: 14px; flex-wrap:wrap; }
+  .hit{
+    width: 9px; height: 9px; border-radius: 50%;
+    background: var(--panel-line);
+  }
+  .hit.good{ background: var(--teal); }
+  .hit.off{ background: var(--red); }
+
+  .note{ font-size: 0.8rem; color: var(--text-dim); line-height:1.5; margin-top: 10px; }
+  .hidden{ display:none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Downbeat</h1>
+    <p>Load a track, lock in the tempo, then plug in and play along — it'll listen and tell you if you're rushing, dragging, or right in the pocket.</p>
+  </header>
+
+  <!-- TRACK PANEL -->
+  <div class="panel">
+    <h2>1 · Track <span>load a backing track and set its tempo</span></h2>
+    <div class="row">
+      <input type="file" id="fileInput">
+      <button id="testToneBtn">Test speaker (beep)</button>
+    </div>
+    <div class="row" id="tempoControls" style="margin-top:16px; display:none;">
+      <div class="field">
+        <div class="label">tempo</div>
+        <div class="bpm-stepper">
+          <button class="stepbtn" id="bpmDown">−</button>
+          <div class="bpm-readout" id="bpmReadout">120</div>
+          <button class="stepbtn" id="bpmUp">+</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="label">time signature</div>
+        <select id="timeSig">
+          <option value="2">2 / 4</option>
+          <option value="3">3 / 4</option>
+          <option value="4" selected>4 / 4</option>
+          <option value="5">5 / 4</option>
+          <option value="6">6 / 8</option>
+          <option value="7">7 / 8</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="label">&nbsp;</div>
+        <button id="detectBtn">Auto-detect tempo</button>
+      </div>
+      <div class="field">
+        <div class="label">&nbsp;</div>
+        <button id="tapTempoBtn">Tap tempo</button>
+      </div>
+    </div>
+    <div class="note" id="detectNote"></div>
+  </div>
+
+  <!-- TRANSPORT PANEL -->
+  <div class="panel hidden" id="transportPanel">
+    <h2>2 · Play <span>tap "Set beat 1 now" right as beat one hits, to lock the grid to the audio</span></h2>
+    <div class="transport">
+      <button class="primary" id="playBtn">Play</button>
+      <div class="beat-light" id="beatLight"></div>
+      <div class="measure-count" id="measureCount">— : —</div>
+      <button id="syncBtn">Set beat 1 now</button>
+    </div>
+    <div class="row" style="margin-top:14px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color: var(--text-dim); cursor:pointer;">
+        <input type="checkbox" id="metroToggle" checked style="width:16px; height:16px; accent-color: var(--brass);">
+        Metronome click
+      </label>
+      <div class="field" style="min-width:140px;">
+        <div class="label">click volume</div>
+        <input type="range" id="metroVol" min="0" max="1" step="0.05" value="0.5" style="width:120px;">
+      </div>
+      <div class="field" style="min-width:140px;">
+        <div class="label">track volume</div>
+        <input type="range" id="trackVol" min="0" max="1" step="0.05" value="1" style="width:120px;">
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px; align-items:center;">
+      <button id="restartBtn" title="Restart from beginning, re-synced to the first sound" style="width:38px; height:38px; border-radius:50%; padding:0; display:flex; align-items:center; justify-content:center; flex-shrink:0;">⏮</button>
+      <input type="range" class="scrub" id="scrub" min="0" max="100" value="0" step="0.01" style="flex:1;">
+    </div>
+    <div class="time-row"><span id="timeNow">0:00</span><span id="timeTotal">0:00</span></div>
+  </div>
+
+  <!-- MIC PANEL -->
+  <div class="panel hidden" id="micPanel">
+    <h2>3 · Play along <span>enable your mic and start strumming</span></h2>
+    <div class="row">
+      <button id="micBtn">Enable microphone</button>
+      <button id="resetStatsBtn">Reset stats</button>
+    </div>
+    <div class="row">
+      <div class="field">
+        <div class="label">timing tolerance</div>
+        <select id="tolerance">
+          <option value="tight">Tight (±20ms)</option>
+          <option value="normal" selected>Normal (±40ms)</option>
+          <option value="loose">Loose (±70ms)</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="label">sensitivity</div>
+        <select id="sensitivity">
+          <option value="low">Low (loud/close mic)</option>
+          <option value="med" selected>Medium</option>
+          <option value="high">High (quiet/far mic)</option>
+        </select>
+      </div>
+    </div>
+    <div class="note" id="micNote">Use headphones for the track if you can — otherwise the mic hears both the backing track and your guitar, which muddies the timing read.</div>
+    <div style="margin-top:14px;">
+      <div class="label">input level</div>
+      <div class="gauge" style="height:20px;">
+        <div class="level-fill" id="levelFill"></div>
+      </div>
+    </div>
+    <div style="margin-top:18px;">
+      <div class="gauge">
+        <div class="gauge-zone"></div>
+        <div class="gauge-mid"></div>
+        <div class="gauge-needle" id="needle"></div>
+      </div>
+      <div class="gauge-labels"><span>early</span><span>on the beat</span><span>late</span></div>
+    </div>
+    <div class="verdict idle" id="verdict">Waiting for your first note…</div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="statAvg">—</div><div class="l">avg offset</div></div>
+      <div class="stat"><div class="n" id="statHit">—</div><div class="l">on-beat rate</div></div>
+      <div class="stat"><div class="n" id="statCount">0</div><div class="l">notes heard</div></div>
+    </div>
+    <div class="history" id="history"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  let audioCtx = null;
+  let audioBuffer = null;
+  let sourceNode = null;
+  let startCtxTime = 0;
+  let pauseOffset = 0;
+  let isPlaying = false;
+  let duration = 0;
+
+  let bpm = 120;
+  let beatsPerMeasure = 4;
+  let firstBeatOffset = 0; // seconds, relative to track-start === startCtxTime
+
+  let tapTimes = [];
+  let rafId = null;
+
+  // mic state
+  let micStream = null, micSource = null, analyser = null, micData = null;
+  let micRafId = null;
+  let energyHistory = [];
+  let lastOnsetCtxTime = -Infinity;
+  const REFRACTORY = 0.15; // seconds
+
+  let hits = []; // {deltaMs}
+
+  // metronome scheduling
+  let metroIntervalId = null;
+  let nextClickBeatIndex = 0;
+  let scheduledClicks = []; // {osc, gain, time}
+  const SCHEDULE_AHEAD = 0.12; // seconds to look ahead
+  const SCHEDULE_TICK = 25;    // ms between scheduler checks
+
+  const $ = (id) => document.getElementById(id);
+  const fileInput = $('fileInput');
+  const tempoControls = $('tempoControls');
+  const bpmReadout = $('bpmReadout');
+  const timeSig = $('timeSig');
+  const detectBtn = $('detectBtn');
+  const tapTempoBtn = $('tapTempoBtn');
+  const detectNote = $('detectNote');
+  const transportPanel = $('transportPanel');
+  const playBtn = $('playBtn');
+  const beatLight = $('beatLight');
+  const measureCount = $('measureCount');
+  const syncBtn = $('syncBtn');
+  const metroToggle = $('metroToggle');
+  const metroVol = $('metroVol');
+  const scrub = $('scrub');
+  const restartBtn = $('restartBtn');
+  const timeNow = $('timeNow');
+  const timeTotal = $('timeTotal');
+  const micPanel = $('micPanel');
+  const micBtn = $('micBtn');
+  const micNote = $('micNote');
+  const resetStatsBtn = $('resetStatsBtn');
+  const needle = $('needle');
+  const verdict = $('verdict');
+  const statAvg = $('statAvg');
+  const statHit = $('statHit');
+  const statCount = $('statCount');
+  const history = $('history');
+  const levelFill = $('levelFill');
+  const sensitivitySelect = $('sensitivity');
+  const toleranceSelect = $('tolerance');
+  const trackVolSlider = $('trackVol');
+  const TOLERANCE = { tight: 20, normal: 40, loose: 70 };
+  const SENS = {
+    low:  { mult: 4.5, floor: 0.035 },
+    med:  { mult: 3,   floor: 0.015 },
+    high: { mult: 1.8, floor: 0.006 }
+  };
+  let trackGainNode = null;
+
+  function ensureCtx(){
+    if(!audioCtx){
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      trackGainNode = audioCtx.createGain();
+      trackGainNode.gain.value = parseFloat(trackVolSlider.value);
+      trackGainNode.connect(audioCtx.destination);
+    }
+    return audioCtx;
+  }
+
+  trackVolSlider.addEventListener('input', () => {
+    if(trackGainNode) trackGainNode.gain.value = parseFloat(trackVolSlider.value);
+  });
+
+  function fmtTime(s){
+    if(!isFinite(s)) s = 0;
+    const m = Math.floor(s/60), sec = Math.floor(s%60);
+    return m + ':' + String(sec).padStart(2,'0');
+  }
+
+  const testToneBtn = $('testToneBtn');
+  testToneBtn.addEventListener('click', () => {
+    const ctx = ensureCtx();
+    const run = () => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.frequency.value = 440;
+      gain.gain.value = 0.2;
+      osc.connect(gain).connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.4);
+      detectNote.textContent = 'Audio context state: ' + ctx.state + ' — you should hear a short beep now.';
+    };
+    if(ctx.state === 'suspended'){ ctx.resume().then(run); } else { run(); }
+  });
+
+  // ---------- FILE LOAD ----------
+  let firstSoundOffset = 0;
+
+  function detectFirstSound(buffer){
+    const ch0 = buffer.getChannelData(0);
+    let mono = ch0;
+    if(buffer.numberOfChannels > 1){
+      const ch1 = buffer.getChannelData(1);
+      mono = new Float32Array(ch0.length);
+      for(let i=0;i<ch0.length;i++) mono[i] = (ch0[i]+ch1[i])/2;
+    }
+    const sr = buffer.sampleRate;
+    const scanLen = Math.min(mono.length, sr*30); // scan up to first 30s
+    let peak = 0;
+    for(let i=0;i<scanLen;i++){ const a = Math.abs(mono[i]); if(a > peak) peak = a; }
+    if(peak === 0) return 0;
+    const threshold = Math.max(peak*0.12, 0.008);
+    const hop = Math.round(sr*0.005); // 5ms frames
+    for(let i=0;i<scanLen;i+=hop){
+      let sum = 0;
+      const end = Math.min(i+hop, scanLen);
+      for(let j=i;j<end;j++) sum += mono[j]*mono[j];
+      const rms = Math.sqrt(sum/(end-i));
+      if(rms > threshold) return i/sr;
+    }
+    return 0;
+  }
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if(!file) return;
+    detectNote.textContent = 'Decoding audio…';
+    const ctx = ensureCtx();
+    const arrayBuf = await file.arrayBuffer();
+    try{
+      audioBuffer = await ctx.decodeAudioData(arrayBuf);
+    }catch(err){
+      detectNote.textContent = "Couldn't decode that file as audio (" + (file.name || 'unknown') + "). Try a standard mp3 or wav.";
+      return;
+    }
+    duration = audioBuffer.duration;
+    pauseOffset = 0;
+    firstSoundOffset = detectFirstSound(audioBuffer);
+    firstBeatOffset = firstSoundOffset;
+    scrub.max = duration;
+    timeTotal.textContent = fmtTime(duration);
+    tempoControls.style.display = 'flex';
+    transportPanel.classList.remove('hidden');
+    micPanel.classList.remove('hidden');
+    detectNote.textContent = 'Loaded. Try "Auto-detect tempo", or set the BPM and time signature by hand.';
+  });
+
+  restartBtn.addEventListener('click', () => {
+    if(!audioBuffer) return;
+    const wasPlaying = isPlaying;
+    if(isPlaying) stop(true);
+    pauseOffset = 0;
+    firstBeatOffset = firstSoundOffset;
+    scrub.value = 0;
+    timeNow.textContent = fmtTime(0);
+    play();
+  });
+
+  // ---------- TEMPO ----------
+  function setBpm(v){
+    bpm = Math.max(30, Math.min(300, Math.round(v)));
+    bpmReadout.textContent = bpm;
+    if(isPlaying) resyncMetronome();
+  }
+  $('bpmUp').addEventListener('click', () => setBpm(bpm+1));
+  $('bpmDown').addEventListener('click', () => setBpm(bpm-1));
+  timeSig.addEventListener('change', () => {
+    beatsPerMeasure = parseInt(timeSig.value, 10);
+    if(isPlaying) resyncMetronome();
+  });
+
+  tapTempoBtn.addEventListener('click', () => {
+    const now = performance.now();
+    tapTimes.push(now);
+    if(tapTimes.length > 8) tapTimes.shift();
+    if(tapTimes.length >= 2){
+      const intervals = [];
+      for(let i=1;i<tapTimes.length;i++) intervals.push(tapTimes[i]-tapTimes[i-1]);
+      const avgMs = intervals.reduce((a,b)=>a+b,0)/intervals.length;
+      setBpm(60000/avgMs);
+    }
+    detectNote.textContent = 'Tapping… keep going for a steadier read (resets after 2s of silence).';
+    clearTimeout(tapTempoBtn._t);
+    tapTempoBtn._t = setTimeout(() => { tapTimes = []; }, 2000);
+  });
+
+  detectBtn.addEventListener('click', () => {
+    if(!audioBuffer) return;
+    detectNote.textContent = 'Analyzing waveform…';
+    setTimeout(() => {
+      const result = detectTempo(audioBuffer);
+      if(result){
+        setBpm(result.bpm);
+        detectNote.textContent = 'Suggested ' + result.bpm + ' BPM — nudge it with +/- if it feels off, then hit "Set beat 1 now" once playing to line up the grid.';
+      } else {
+        detectNote.textContent = "Couldn't find a clear tempo — try tap tempo instead.";
+      }
+    }, 20);
+  });
+
+  function detectTempo(buffer){
+    // Downmix to mono
+    const ch0 = buffer.getChannelData(0);
+    let mono = ch0;
+    if(buffer.numberOfChannels > 1){
+      const ch1 = buffer.getChannelData(1);
+      mono = new Float32Array(ch0.length);
+      for(let i=0;i<ch0.length;i++) mono[i] = (ch0[i]+ch1[i])/2;
+    }
+    const sr = buffer.sampleRate;
+    const hop = Math.round(sr * 0.01); // 10ms frames
+    const nFrames = Math.floor(mono.length / hop);
+    // cap analysis to first ~60s for speed
+    const maxFrames = Math.min(nFrames, 6000);
+    const energy = new Float32Array(maxFrames);
+    for(let f=0; f<maxFrames; f++){
+      let sum = 0;
+      const start = f*hop;
+      const end = Math.min(start+hop, mono.length);
+      for(let i=start;i<end;i++){ sum += mono[i]*mono[i]; }
+      energy[f] = Math.sqrt(sum/(end-start));
+    }
+    // onset envelope: half-wave rectified derivative
+    const flux = new Float32Array(maxFrames);
+    for(let f=1; f<maxFrames; f++){
+      const d = energy[f]-energy[f-1];
+      flux[f] = d > 0 ? d : 0;
+    }
+    // autocorrelation over lag range for 60-200 BPM
+    const minLag = Math.round((60/200)/0.01);
+    const maxLag = Math.round((60/60)/0.01);
+    let bestLag = -1, bestScore = -Infinity;
+    for(let lag=minLag; lag<=maxLag; lag++){
+      let score = 0;
+      for(let i=0; i+lag<maxFrames; i++){ score += flux[i]*flux[i+lag]; }
+      if(score > bestScore){ bestScore = score; bestLag = lag; }
+    }
+    if(bestLag < 0) return null;
+    let bpmEst = 60/(bestLag*0.01);
+    // fold into a comfortable 70-180 range by doubling/halving
+    while(bpmEst < 70) bpmEst *= 2;
+    while(bpmEst > 180) bpmEst /= 2;
+    return { bpm: Math.round(bpmEst) };
+  }
+
+  // ---------- TRANSPORT ----------
+  function currentTrackTime(){
+    if(isPlaying) return (audioCtx.currentTime - startCtxTime);
+    return pauseOffset;
+  }
+
+  function play(){
+    if(!audioBuffer) return;
+    const ctx = ensureCtx();
+    const startPlayback = () => {
+      sourceNode = ctx.createBufferSource();
+      sourceNode.buffer = audioBuffer;
+      sourceNode.connect(trackGainNode);
+      startCtxTime = ctx.currentTime - pauseOffset;
+      sourceNode.start(0, pauseOffset);
+      isPlaying = true;
+      playBtn.textContent = 'Pause';
+      sourceNode.onended = () => { if(isPlaying) stop(true); };
+      startMetronome();
+      loopUI();
+    };
+    if(ctx.state === 'suspended'){
+      ctx.resume().then(startPlayback);
+    } else {
+      startPlayback();
+    }
+  }
+
+  function stop(natural){
+    if(sourceNode){ try{ sourceNode.stop(); }catch(e){} sourceNode.disconnect(); sourceNode = null; }
+    pauseOffset = natural ? 0 : currentTrackTime();
+    isPlaying = false;
+    playBtn.textContent = 'Play';
+    if(rafId) cancelAnimationFrame(rafId);
+    stopMetronome();
+  }
+
+  // ---------- METRONOME ----------
+  function scheduleClick(time, isDownbeat){
+    const ctx = audioCtx;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = isDownbeat ? 1500 : 1000;
+    const vol = parseFloat(metroVol.value) * (isDownbeat ? 1 : 0.6);
+    gain.gain.setValueAtTime(0.0001, time);
+    gain.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0001), time + 0.002);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + 0.05);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(time);
+    osc.stop(time + 0.06);
+    scheduledClicks.push({ osc, time });
+  }
+
+  function resyncMetronome(){
+    // cancel any future clicks already scheduled under the old grid
+    const now = audioCtx ? audioCtx.currentTime : 0;
+    scheduledClicks.forEach(c => {
+      if(c.time > now){ try{ c.osc.stop(now); }catch(e){} }
+    });
+    scheduledClicks = scheduledClicks.filter(c => c.time > now ? false : true);
+    if(isPlaying){
+      const bi = beatInterval();
+      const t = audioCtx.currentTime - startCtxTime;
+      nextClickBeatIndex = Math.ceil((t - firstBeatOffset - 1e-6) / bi);
+    }
+  }
+
+  function startMetronome(){
+    if(!audioCtx) return;
+    const bi = beatInterval();
+    const t = audioCtx.currentTime - startCtxTime;
+    nextClickBeatIndex = Math.ceil((t - firstBeatOffset - 1e-6) / bi);
+    if(metroIntervalId) clearInterval(metroIntervalId);
+    metroIntervalId = setInterval(() => {
+      if(!isPlaying || !metroToggle.checked) return;
+      const bi2 = beatInterval();
+      const ctx = audioCtx;
+      while(true){
+        const beatTime = startCtxTime + firstBeatOffset + nextClickBeatIndex * bi2;
+        if(beatTime > ctx.currentTime + SCHEDULE_AHEAD) break;
+        const beatInMeasure = ((nextClickBeatIndex % beatsPerMeasure) + beatsPerMeasure) % beatsPerMeasure;
+        scheduleClick(beatTime, beatInMeasure === 0);
+        nextClickBeatIndex++;
+      }
+      // housekeeping: drop old entries so the array doesn't grow forever
+      scheduledClicks = scheduledClicks.filter(c => c.time > ctx.currentTime - 1);
+    }, SCHEDULE_TICK);
+  }
+
+  function stopMetronome(){
+    if(metroIntervalId){ clearInterval(metroIntervalId); metroIntervalId = null; }
+    const now = audioCtx ? audioCtx.currentTime : 0;
+    scheduledClicks.forEach(c => { if(c.time > now){ try{ c.osc.stop(now); }catch(e){} } });
+    scheduledClicks = [];
+  }
+
+  metroToggle.addEventListener('change', () => {
+    if(!metroToggle.checked) resyncMetronome();
+  });
+
+  playBtn.addEventListener('click', () => {
+    if(isPlaying) stop(false); else play();
+  });
+
+  scrub.addEventListener('input', () => {
+    const wasPlaying = isPlaying;
+    if(isPlaying) stop(false);
+    pauseOffset = parseFloat(scrub.value);
+    if(wasPlaying) play();
+    else { timeNow.textContent = fmtTime(pauseOffset); }
+  });
+
+  function setBeatOneNow(){
+    if(!isPlaying) return;
+    firstBeatOffset = audioCtx.currentTime - startCtxTime;
+    resyncMetronome();
+  }
+  syncBtn.addEventListener('click', setBeatOneNow);
+  beatLight.addEventListener('click', setBeatOneNow);
+  beatLight.style.cursor = 'pointer';
+
+  function beatInterval(){ return 60/bpm; }
+
+  function loopUI(){
+    if(!isPlaying) return;
+    const t = currentTrackTime();
+    if(t >= duration){ stop(true); scrub.value = 0; timeNow.textContent = fmtTime(0); return; }
+    scrub.value = t;
+    timeNow.textContent = fmtTime(t);
+
+    const bi = beatInterval();
+    const phase = (((t - firstBeatOffset) % bi) + bi) % bi;
+    const beatNum = Math.floor((t - firstBeatOffset) / bi);
+    const on = phase < 0.08; // flash window
+    const beatInMeasure = ((beatNum % beatsPerMeasure) + beatsPerMeasure) % beatsPerMeasure;
+    beatLight.classList.toggle('on', on);
+    beatLight.classList.toggle('downbeat', beatInMeasure === 0);
+    measureCount.innerHTML = '<b>' + (Math.floor(beatNum/beatsPerMeasure)+1) + '</b> : ' + (beatInMeasure+1);
+
+    rafId = requestAnimationFrame(loopUI);
+  }
+
+  // ---------- MIC ----------
+  let onsetWorkletNode = null;
+  let workletReady = false;
+
+  const ONSET_WORKLET_CODE = `
+    class OnsetProcessor extends AudioWorkletProcessor {
+      constructor(options){
+        super();
+        this.energyHistory = [];
+        this.historyLen = 60;
+        this.lastOnsetTime = -Infinity;
+        this.refractory = 0.15;
+        const po = options.processorOptions || {};
+        this.mult = po.mult || 3;
+        this.floor = po.floor || 0.015;
+        this.blockCounter = 0;
+        this.port.onmessage = (e) => {
+          if(e.data && e.data.type === 'params'){
+            this.mult = e.data.mult;
+            this.floor = e.data.floor;
+          }
+        };
+      }
+      process(inputs){
+        const input = inputs[0];
+        if(!input || input.length === 0) return true;
+        const channel = input[0];
+        if(!channel || channel.length === 0) return true;
+        let sum = 0, peak = 0;
+        for(let i=0;i<channel.length;i++){
+          sum += channel[i]*channel[i];
+          const a = Math.abs(channel[i]);
+          if(a > peak) peak = a;
+        }
+        const rms = Math.sqrt(sum/channel.length);
+
+        this.energyHistory.push(rms);
+        if(this.energyHistory.length > this.historyLen) this.energyHistory.shift();
+        const avg = this.energyHistory.reduce((a,b)=>a+b,0)/this.energyHistory.length;
+        let variance = 0;
+        for(let i=0;i<this.energyHistory.length;i++){ const d = this.energyHistory[i]-avg; variance += d*d; }
+        variance /= this.energyHistory.length;
+        const sd = Math.sqrt(variance);
+        const threshold = avg + Math.max(sd*this.mult, this.floor);
+
+        const now = currentTime; // AudioWorkletGlobalScope clock, sample-accurate
+        if(rms > threshold && rms > this.floor && (now - this.lastOnsetTime) > this.refractory){
+          this.lastOnsetTime = now;
+          this.port.postMessage({ type:'onset', time: now });
+        }
+        this.blockCounter++;
+        if(this.blockCounter % 4 === 0){
+          this.port.postMessage({ type:'level', peak: peak });
+        }
+        return true;
+      }
+    }
+    registerProcessor('onset-processor', OnsetProcessor);
+  `;
+
+  async function setupOnsetWorklet(ctx){
+    if(!ctx.audioWorklet){ return null; }
+    if(!workletReady){
+      const blob = new Blob([ONSET_WORKLET_CODE], { type: 'application/javascript' });
+      const url = URL.createObjectURL(blob);
+      await ctx.audioWorklet.addModule(url);
+      workletReady = true;
+    }
+    const sens = SENS[sensitivitySelect.value] || SENS.med;
+    const node = new AudioWorkletNode(ctx, 'onset-processor', {
+      processorOptions: { mult: sens.mult, floor: sens.floor }
+    });
+    node.port.onmessage = (e) => {
+      const d = e.data;
+      if(d.type === 'onset'){
+        registerOnset(d.time);
+      } else if(d.type === 'level'){
+        const levelPct = Math.min(100, d.peak * 260);
+        levelFill.style.width = levelPct + '%';
+        levelFill.style.background = levelPct > 80 ? 'var(--red)' : 'var(--teal)';
+      }
+    };
+    const silentGain = ctx.createGain();
+    silentGain.gain.value = 0;
+    node.connect(silentGain).connect(ctx.destination);
+    return node;
+  }
+
+  sensitivitySelect.addEventListener('change', () => {
+    if(onsetWorkletNode){
+      const sens = SENS[sensitivitySelect.value] || SENS.med;
+      onsetWorkletNode.port.postMessage({ type:'params', mult: sens.mult, floor: sens.floor });
+    }
+  });
+
+  micBtn.addEventListener('click', async () => {
+    if(micStream){
+      micStream.getTracks().forEach(tr => tr.stop());
+      micStream = null;
+      if(micRafId) cancelAnimationFrame(micRafId);
+      if(onsetWorkletNode){ onsetWorkletNode.disconnect(); onsetWorkletNode = null; }
+      micBtn.textContent = 'Enable microphone';
+      micNote.textContent = 'Microphone disabled.';
+      return;
+    }
+    micNote.textContent = 'Requesting microphone access…';
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      micNote.textContent = 'This browser context is not exposing microphone access at all (navigator.mediaDevices is unavailable here). Try opening the page in a different browser tab.';
+      return;
+    }
+    try{
+      const ctx = ensureCtx();
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:true } });
+      micSource = ctx.createMediaStreamSource(micStream);
+
+      onsetWorkletNode = await setupOnsetWorklet(ctx);
+      if(onsetWorkletNode){
+        micSource.connect(onsetWorkletNode);
+        micNote.textContent = 'Microphone active (precise mode) — watch the level meter below while you play.';
+      } else {
+        // Fallback for browsers without AudioWorklet support
+        analyser = ctx.createAnalyser();
+        analyser.fftSize = 1024;
+        micSource.connect(analyser);
+        micData = new Float32Array(analyser.fftSize);
+        energyHistory = [];
+        micLoop();
+        micNote.textContent = 'Microphone active — watch the level meter below while you play.';
+      }
+      micBtn.textContent = 'Disable microphone';
+    }catch(err){
+      micNote.textContent = 'Microphone request failed: ' + err.name + ' — ' + err.message;
+    }
+  });
+
+  function micLoop(){
+    if(!analyser) return;
+    analyser.getFloatTimeDomainData(micData);
+    let sum = 0, peak = 0;
+    for(let i=0;i<micData.length;i++){
+      sum += micData[i]*micData[i];
+      const a = Math.abs(micData[i]);
+      if(a > peak) peak = a;
+    }
+    const rms = Math.sqrt(sum/micData.length);
+
+    // level meter: scale peak (0-1) to a visible 0-100% bar, boosted since guitar transients are usually well under 1.0
+    const levelPct = Math.min(100, peak * 260);
+    levelFill.style.width = levelPct + '%';
+    levelFill.style.background = levelPct > 80 ? 'var(--red)' : 'var(--teal)';
+
+    energyHistory.push(rms);
+    if(energyHistory.length > 60) energyHistory.shift();
+    const avg = energyHistory.reduce((a,b)=>a+b,0)/energyHistory.length;
+    const variance = energyHistory.reduce((a,b)=>a+(b-avg)*(b-avg),0)/energyHistory.length;
+    const sd = Math.sqrt(variance);
+    const sens = SENS[sensitivitySelect.value] || SENS.med;
+    const threshold = avg + Math.max(sd*sens.mult, sens.floor);
+
+    const now = audioCtx.currentTime;
+    if(rms > threshold && (now - lastOnsetCtxTime) > REFRACTORY && rms > sens.floor){
+      lastOnsetCtxTime = now;
+      registerOnset(now);
+    }
+    micRafId = requestAnimationFrame(micLoop);
+  }
+
+  function registerOnset(ctxTime){
+    if(!isPlaying){ return; }
+    const trackTime = ctxTime - startCtxTime;
+    const bi = beatInterval();
+    const n = Math.round((trackTime - firstBeatOffset) / bi);
+    const nearestBeatTrackTime = firstBeatOffset + n*bi;
+    const deltaMs = (trackTime - nearestBeatTrackTime) * 1000;
+    recordHit(deltaMs);
+  }
+
+  function recordHit(deltaMs){
+    hits.push(deltaMs);
+    if(hits.length > 200) hits.shift();
+
+    const clamped = Math.max(-150, Math.min(150, deltaMs));
+    const pct = 50 + (clamped/150)*45;
+    needle.style.left = pct + '%';
+
+    const absMs = Math.abs(deltaMs);
+    const tol = TOLERANCE[toleranceSelect.value] || TOLERANCE.normal;
+    let cls, text, good;
+    if(absMs <= tol){ cls='good'; text='Right on the beat'; good=true; needle.style.background = 'var(--teal)'; }
+    else if(deltaMs < 0){ cls='early'; text=Math.round(absMs)+' ms early'; good=false; needle.style.background='var(--red)'; }
+    else { cls='late'; text=Math.round(absMs)+' ms late'; good=false; needle.style.background='var(--red)'; }
+    verdict.className = 'verdict ' + cls;
+    verdict.textContent = text;
+
+    const dot = document.createElement('div');
+    dot.className = 'hit ' + (good ? 'good' : 'off');
+    history.appendChild(dot);
+    while(history.children.length > 40) history.removeChild(history.firstChild);
+
+    const avgAbs = hits.reduce((a,b)=>a+Math.abs(b),0)/hits.length;
+    const avgSigned = hits.reduce((a,b)=>a+b,0)/hits.length;
+    const hitRate = hits.filter(h=>Math.abs(h)<=tol).length / hits.length * 100;
+    statAvg.textContent = (avgSigned>=0?'+':'') + Math.round(avgSigned) + ' ms';
+    statHit.textContent = Math.round(hitRate) + '%';
+    statCount.textContent = hits.length;
+  }
+
+  resetStatsBtn.addEventListener('click', () => {
+    hits = [];
+    history.innerHTML = '';
+    statAvg.textContent = '—';
+    statHit.textContent = '—';
+    statCount.textContent = '0';
+    verdict.className = 'verdict idle';
+    verdict.textContent = 'Waiting for your first note…';
+    needle.style.left = '50%';
+    needle.style.background = 'var(--text-dim)';
+  });
+
+})();
+</script>
+</body>
+</html>
