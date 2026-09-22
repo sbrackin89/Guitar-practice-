@@ -409,7 +409,7 @@
   let micRafId = null;
   let energyHistory = [];
   let lastOnsetCtxTime = -Infinity;
-  const REFRACTORY = 0.15; // seconds
+  const REFRACTORY = 0.22; // seconds
 
   let hits = []; // {deltaMs}
 
@@ -825,14 +825,14 @@
         this.historyLen = 60;
         this.prevRms = 0;
         this.lastOnsetTime = -Infinity;
-        this.refractory = 0.15;
+        this.refractory = 0.22;
         const po = options.processorOptions || {};
         this.mult = po.mult || 3;
         this.floor = po.floor || 0.015;
         this.blockCounter = 0;
         this.peakSinceOnset = 0;
         this.dipSatisfied = true;
-        this.dipRatio = 0.3; // must fall to ~30% of the last note's peak before a new rise can count
+        this.dipRatio = 0.15; // must fall to ~15% of the last note's peak before a new rise can count
         this.port.onmessage = (e) => {
           if(e.data && e.data.type === 'params'){
             this.mult = e.data.mult;
@@ -1129,7 +1129,7 @@
   let prevRmsFallback = 0;
   let peakSinceOnsetFallback = 0;
   let dipSatisfiedFallback = true;
-  const DIP_RATIO = 0.3;
+  const DIP_RATIO = 0.15;
 
   function micLoop(){
     if(!analyser) return;
