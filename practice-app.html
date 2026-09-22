@@ -373,6 +373,17 @@
       <div class="stat"><div class="n" id="statCount">0</div><div class="l">notes heard</div></div>
     </div>
     <div class="history" id="history"></div>
+
+    <div class="row" style="margin-top:16px;">
+      <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color: var(--text-dim); cursor:pointer;">
+        <input type="checkbox" id="debugToggle" style="width:16px; height:16px; accent-color: var(--brass);">
+        Show debug info (for screen-recording without needing audio)
+      </label>
+    </div>
+    <div class="hidden" id="debugPanel" style="margin-top:10px; font-family:'Space Mono',monospace; font-size:0.72rem; color: var(--text-dim); background: var(--bg); border:1px solid var(--panel-line); border-radius:3px; padding:10px;">
+      <div id="debugLive">level: — &nbsp; flux: — &nbsp; threshold: — &nbsp; dip: —</div>
+      <div id="debugLog" style="margin-top:8px; max-height:220px; overflow-y:auto; white-space:pre-wrap; line-height:1.5;"></div>
+    </div>
   </div>
 </div>
 
@@ -436,6 +447,23 @@
   const calibBtn = $('calibBtn');
   const calibInput = $('calibInput');
   const calibNote = $('calibNote');
+  const debugToggle = $('debugToggle');
+  const debugPanel = $('debugPanel');
+  const debugLive = $('debugLive');
+  const debugLog = $('debugLog');
+
+  function debugLogLine(text){
+    if(!debugToggle.checked) return;
+    const line = document.createElement('div');
+    line.textContent = text;
+    debugLog.appendChild(line);
+    while(debugLog.children.length > 40) debugLog.removeChild(debugLog.firstChild);
+    debugLog.scrollTop = debugLog.scrollHeight;
+  }
+
+  debugToggle.addEventListener('change', () => {
+    debugPanel.classList.toggle('hidden', !debugToggle.checked);
+  });
   const echoCancelToggle = $('echoCancelToggle');
   const resetStatsBtn = $('resetStatsBtn');
   const needle = $('needle');
@@ -858,11 +886,11 @@
           this.lastOnsetTime = now;
           this.peakSinceOnset = rms;
           this.dipSatisfied = false;
-          this.port.postMessage({ type:'onset', time: now });
+          this.port.postMessage({ type:'onset', time: now, rms: rms });
         }
         this.blockCounter++;
         if(this.blockCounter % 4 === 0){
-          this.port.postMessage({ type:'level', peak: peak });
+          this.port.postMessage({ type:'level', peak: peak, rms: rms, flux: flux, threshold: threshold, dip: this.dipSatisfied });
         }
         return true;
       }
@@ -885,11 +913,22 @@
     node.port.onmessage = (e) => {
       const d = e.data;
       if(d.type === 'onset'){
-        if(calibrating){ calibrationDetected.push(d.time); } else { registerOnset(d.time); }
+        if(calibrating){
+          calibrationDetected.push(d.time);
+        } else {
+          registerOnset(d.time);
+          debugLogLine('ONSET  t=' + d.time.toFixed(3) + 's  rms=' + d.rms.toFixed(4));
+        }
       } else if(d.type === 'level'){
         const levelPct = Math.min(100, d.peak * 260);
         levelFill.style.width = levelPct + '%';
         levelFill.style.background = levelPct > 80 ? 'var(--red)' : 'var(--teal)';
+        if(debugToggle.checked){
+          debugLive.textContent = 'level: ' + d.rms.toFixed(4) +
+            '  flux: ' + d.flux.toFixed(4) +
+            '  threshold: ' + d.threshold.toFixed(4) +
+            '  dip: ' + (d.dip ? 'ready' : 'waiting');
+        }
       }
     };
     const silentGain = ctx.createGain();
@@ -1133,11 +1172,22 @@
     }
 
     const now = audioCtx.currentTime;
+    if(debugToggle.checked){
+      debugLive.textContent = 'level: ' + rms.toFixed(4) +
+        '  flux: ' + flux.toFixed(4) +
+        '  threshold: ' + threshold.toFixed(4) +
+        '  dip: ' + (dipSatisfiedFallback ? 'ready' : 'waiting');
+    }
     if(isAttack && rms > sens.floor && (now - lastOnsetCtxTime) > REFRACTORY){
       lastOnsetCtxTime = now;
       peakSinceOnsetFallback = rms;
       dipSatisfiedFallback = false;
-      if(calibrating){ calibrationDetected.push(now); } else { registerOnset(now); }
+      if(calibrating){
+        calibrationDetected.push(now);
+      } else {
+        registerOnset(now);
+        debugLogLine('ONSET  t=' + now.toFixed(3) + 's  rms=' + rms.toFixed(4));
+      }
     }
     micRafId = requestAnimationFrame(micLoop);
   }
@@ -1155,6 +1205,7 @@
   function recordHit(deltaMs){
     hits.push(deltaMs);
     if(hits.length > 5000) hits.shift();
+    debugLogLine('  -> raw deltaMs=' + Math.round(deltaMs) + 'ms');
 
     const absMs = Math.abs(deltaMs);
     const tol = TOLERANCE[toleranceSelect.value] || TOLERANCE.normal;
