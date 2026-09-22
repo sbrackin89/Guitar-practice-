@@ -804,7 +804,7 @@
         this.blockCounter = 0;
         this.peakSinceOnset = 0;
         this.dipSatisfied = true;
-        this.dipRatio = 0.5; // must fall to ~half the last note's peak before a new rise can count
+        this.dipRatio = 0.3; // must fall to ~30% of the last note's peak before a new rise can count
         this.port.onmessage = (e) => {
           if(e.data && e.data.type === 'params'){
             this.mult = e.data.mult;
@@ -1090,7 +1090,7 @@
   let prevRmsFallback = 0;
   let peakSinceOnsetFallback = 0;
   let dipSatisfiedFallback = true;
-  const DIP_RATIO = 0.5;
+  const DIP_RATIO = 0.3;
 
   function micLoop(){
     if(!analyser) return;
@@ -1154,7 +1154,7 @@
 
   function recordHit(deltaMs){
     hits.push(deltaMs);
-    if(hits.length > 200) hits.shift();
+    if(hits.length > 5000) hits.shift();
 
     const absMs = Math.abs(deltaMs);
     const tol = TOLERANCE[toleranceSelect.value] || TOLERANCE.normal;
