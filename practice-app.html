@@ -343,6 +343,14 @@
         </select>
       </div>
       <div class="field">
+        <div class="label">note grid</div>
+        <select id="noteGrid">
+          <option value="1">Quarter notes</option>
+          <option value="2" selected>Eighth notes</option>
+          <option value="4">Sixteenth notes</option>
+        </select>
+      </div>
+      <div class="field">
         <div class="label">sensitivity</div>
         <select id="sensitivity">
           <option value="low">Low (loud/close mic)</option>
@@ -475,6 +483,7 @@
   const levelFill = $('levelFill');
   const sensitivitySelect = $('sensitivity');
   const toleranceSelect = $('tolerance');
+  const noteGridSelect = $('noteGrid');
   const trackVolSlider = $('trackVol');
   const TOLERANCE = { tight: 40, normal: 70, loose: 100 };
   const SENS = {
@@ -1195,10 +1204,11 @@
   function registerOnset(ctxTime){
     if(!isPlaying){ return; }
     const trackTime = ctxTime - startCtxTime;
-    const bi = beatInterval();
-    const n = Math.round((trackTime - firstBeatOffset) / bi);
-    const nearestBeatTrackTime = firstBeatOffset + n*bi;
-    const deltaMs = (trackTime - nearestBeatTrackTime) * 1000 - calibrationOffsetMs;
+    const subdivision = parseInt(noteGridSelect.value, 10) || 1;
+    const gridInterval = beatInterval() / subdivision;
+    const n = Math.round((trackTime - firstBeatOffset) / gridInterval);
+    const nearestGridTrackTime = firstBeatOffset + n*gridInterval;
+    const deltaMs = (trackTime - nearestGridTrackTime) * 1000 - calibrationOffsetMs;
     recordHit(deltaMs);
   }
 
