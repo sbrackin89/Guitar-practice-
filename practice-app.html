@@ -989,22 +989,42 @@
       }
       micBtn.textContent = 'Disable microphone';
 
-      // Now that permission is granted, device labels become available — populate the picker
+      await refreshMicDeviceList();
+    }catch(err){
+      micNote.textContent = 'Microphone request failed: ' + err.name + ' — ' + err.message;
+    }
+  }
+
+  async function refreshMicDeviceList(){
+    // Re-checks what inputs are actually available right now and rebuilds the
+    // picker — called on first mic enable AND whenever a device is plugged in
+    // or unplugged, since iOS can silently reroute an already-open mic stream
+    // to a newly connected accessory without the app being told directly.
+    if(!micStream) return;
+    try{
       const devices = await navigator.mediaDevices.enumerateDevices();
       const inputs = devices.filter(d => d.kind === 'audioinput');
-      const activeDeviceId = micStream.getAudioTracks()[0].getSettings().deviceId;
+      const track = micStream.getAudioTracks()[0];
+      const activeDeviceId = track ? track.getSettings().deviceId : null;
+      const previousValue = micDeviceSelect.value;
       micDeviceSelect.innerHTML = '';
       inputs.forEach(d => {
         const opt = document.createElement('option');
         opt.value = d.deviceId;
         opt.textContent = d.label || 'Microphone';
-        if(d.deviceId === activeDeviceId) opt.selected = true;
+        if(d.deviceId === activeDeviceId || (!activeDeviceId && d.deviceId === previousValue)) opt.selected = true;
         micDeviceSelect.appendChild(opt);
       });
-      if(inputs.length > 1) micDeviceRow.classList.remove('hidden');
-    }catch(err){
-      micNote.textContent = 'Microphone request failed: ' + err.name + ' — ' + err.message;
+      micDeviceRow.classList.toggle('hidden', inputs.length <= 1);
+    }catch(e){
+      // enumerateDevices can fail transiently right as a device is plugged/unplugged — ignore, next devicechange will retry
     }
+  }
+
+  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      refreshMicDeviceList();
+    });
   }
 
   micBtn.addEventListener('click', async () => {
