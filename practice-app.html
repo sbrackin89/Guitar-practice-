@@ -1021,12 +1021,6 @@
     }
   }
 
-  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
-    navigator.mediaDevices.addEventListener('devicechange', () => {
-      refreshMicDeviceList();
-    });
-  }
-
   micBtn.addEventListener('click', async () => {
     if(micStream){
       teardownMicGraph();
@@ -1044,18 +1038,16 @@
     await startMicStream(chosenId);
   });
 
-  echoCancelToggle.addEventListener('change', async () => {
-    if(!micStream){ return; }
-    micNote.textContent = 'Rebuilding audio engine to fully reset iOS\'s audio session…';
-
+  async function rebuildAudioEngine(deviceIdForMic){
+    // Full teardown: stop mic, stop playback/metronome, then close the
+    // AudioContext entirely. Simply restarting the mic stream isn't enough —
+    // iOS can leave the whole audio pipeline in a broken state after its
+    // audio session mode changes (echo-cancel toggling) or after a device is
+    // plugged/unplugged. Only closing the whole context and building a fresh
+    // one reliably recovers it.
     const wasPlaying = isPlaying;
     const savedTrackTime = currentTrackTime();
-    const chosenDeviceId = micDeviceSelect.value || null;
 
-    // Full teardown: stop mic, stop playback/metronome, then close the
-    // AudioContext entirely. Simply restarting the mic stream doesn't reliably
-    // clear iOS's "voice processing" audio session once it's been engaged —
-    // only closing the whole context and building a fresh one does.
     teardownMicGraph();
     if(sourceNode){ try{ sourceNode.stop(); }catch(e){} try{ sourceNode.disconnect(); }catch(e){} sourceNode = null; }
     isPlaying = false;
@@ -1078,8 +1070,31 @@
       scrub.value = pauseOffset;
     }
 
-    await startMicStream(chosenDeviceId);
+    if(deviceIdForMic !== undefined){
+      await startMicStream(deviceIdForMic);
+    }
+  }
+
+  echoCancelToggle.addEventListener('change', async () => {
+    if(!micStream){ return; }
+    micNote.textContent = 'Rebuilding audio engine to fully reset iOS\'s audio session…';
+    const chosenDeviceId = micDeviceSelect.value || null;
+    await rebuildAudioEngine(chosenDeviceId);
   });
+
+  let deviceChangeRebuildTimer = null;
+  if(navigator.mediaDevices && navigator.mediaDevices.addEventListener){
+    navigator.mediaDevices.addEventListener('devicechange', () => {
+      if(deviceChangeRebuildTimer) clearTimeout(deviceChangeRebuildTimer);
+      deviceChangeRebuildTimer = setTimeout(async () => {
+        if(micStream){
+          micNote.textContent = 'Audio device change detected — rebuilding audio engine…';
+          const chosenDeviceId = micDeviceSelect.value || null;
+          await rebuildAudioEngine(chosenDeviceId);
+        }
+      }, 400); // brief debounce in case of plug bounce / multiple rapid events
+    });
+  }
 
   // ---------- LATENCY CALIBRATION ----------
   let calibrationOffsetMs = 78;
