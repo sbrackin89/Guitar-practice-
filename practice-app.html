@@ -244,7 +244,7 @@
     </div>
     <div class="row" id="tempoControls" style="margin-top:16px; display:none;">
       <div class="field">
-        <div class="label">tempo</div>
+        <div class="label" id="tempoLabel">tempo (quarter-note beats)</div>
         <div class="bpm-stepper">
           <button class="stepbtn" id="bpmDown">−</button>
           <input type="number" class="bpm-readout" id="bpmReadout" value="120" style="background:transparent; border:1px solid var(--panel-line); border-radius:3px; color:var(--text); text-align:center; width:140px; flex:none; -moz-appearance:textfield;">
@@ -254,12 +254,14 @@
       <div class="field">
         <div class="label">time signature</div>
         <select id="timeSig">
-          <option value="2">2 / 4</option>
-          <option value="3">3 / 4</option>
-          <option value="4" selected>4 / 4</option>
-          <option value="5">5 / 4</option>
-          <option value="6">6 / 8</option>
-          <option value="7">7 / 8</option>
+          <option value="2/4">2 / 4</option>
+          <option value="3/4">3 / 4</option>
+          <option value="4/4" selected>4 / 4</option>
+          <option value="5/4">5 / 4</option>
+          <option value="6/8">6 / 8</option>
+          <option value="7/8">7 / 8</option>
+          <option value="9/8">9 / 8</option>
+          <option value="12/8">12 / 8</option>
         </select>
       </div>
       <div class="field">
@@ -349,6 +351,7 @@
         </select>
       </div>
     </div>
+    <div class="note hidden" id="gridWarn"></div>
     <div class="note" id="micNote">Use wired headphones for the track if you can. Wireless earbuds (AirPods, etc.) route their mic over Bluetooth, which is lower quality and adds real lag — pick the iPad's built-in mic below once available, even if you keep the earbuds for listening.</div>
     <div style="margin-top:14px;">
       <div class="label">input level</div>
@@ -489,6 +492,8 @@
   const sensitivitySelect = $('sensitivity');
   const toleranceSelect = $('tolerance');
   const noteGridSelect = $('noteGrid');
+  const tempoLabel = $('tempoLabel');
+  const gridWarn = $('gridWarn');
   const trackVolSlider = $('trackVol');
   const TOLERANCE = { tight: 40, normal: 70, loose: 100 };
   const SENS = {
@@ -601,15 +606,83 @@
   function setBpm(v){
     bpm = Math.max(30, Math.min(300, Math.round(v)));
     bpmReadout.value = bpm;
+    updateGridWarning();
     if(isPlaying) resyncMetronome();
   }
   $('bpmUp').addEventListener('click', () => setBpm(bpm+1));
   $('bpmDown').addEventListener('click', () => setBpm(bpm-1));
   bpmReadout.addEventListener('change', () => setBpm(parseFloat(bpmReadout.value) || bpm));
-  timeSig.addEventListener('change', () => {
-    beatsPerMeasure = parseInt(timeSig.value, 10);
+
+  // ---------- METER / NOTE GRID ----------
+  // "beats" = the pulse the tempo counts, the click plays on, and the light flashes on.
+  //  simple meters:   beat = quarter note
+  //  compound meters: beat = dotted quarter (three eighths)
+  //  7/8:             beat = eighth note
+  const METERS = {
+    '2/4':  { beats:2, kind:'simple' },
+    '3/4':  { beats:3, kind:'simple' },
+    '4/4':  { beats:4, kind:'simple' },
+    '5/4':  { beats:5, kind:'simple' },
+    '6/8':  { beats:2, kind:'compound' },
+    '7/8':  { beats:7, kind:'eighth' },
+    '9/8':  { beats:3, kind:'compound' },
+    '12/8': { beats:4, kind:'compound' }
+  };
+  // Grid option values are "targets per beat".
+  const GRID_OPTIONS = {
+    simple:   { def:'2', tempo:'quarter-note beats',
+                opts:[['1','Quarter notes'],['2','Eighth notes'],['3','Eighth-note triplets'],['4','Sixteenth notes']] },
+    compound: { def:'3', tempo:'dotted-quarter beats',
+                opts:[['1','Dotted-quarter beats'],['3','Eighth notes'],['6','Sixteenth notes']] },
+    eighth:   { def:'1', tempo:'eighth-note beats',
+                opts:[['1','Eighth notes'],['2','Sixteenth notes']] }
+  };
+  let currentMeterKind = null;
+
+  function buildNoteGrid(kind){
+    const cfg = GRID_OPTIONS[kind];
+    noteGridSelect.innerHTML = '';
+    cfg.opts.forEach(([v, label]) => {
+      const o = document.createElement('option');
+      o.value = v;
+      o.textContent = label;
+      noteGridSelect.appendChild(o);
+    });
+    noteGridSelect.value = cfg.def;
+  }
+
+  function updateGridWarning(){
+    const subdivision = parseInt(noteGridSelect.value, 10) || 1;
+    const spacingMs = beatInterval() * 1000 / subdivision;
+    const tol = TOLERANCE[toleranceSelect.value] || TOLERANCE.normal;
+    if(spacingMs < tol * 2){
+      gridWarn.textContent = 'At this tempo the note-grid targets are only ' + Math.round(spacingMs) +
+        'ms apart, less than twice your ±' + tol + 'ms tolerance, so most strums will read "On beat." ' +
+        'Try a tighter tolerance or a coarser grid.';
+      gridWarn.classList.remove('hidden');
+    } else {
+      gridWarn.classList.add('hidden');
+    }
+  }
+
+  function applyMeter(force){
+    const m = METERS[timeSig.value] || METERS['4/4'];
+    beatsPerMeasure = m.beats;
+    tempoLabel.textContent = 'tempo (' + GRID_OPTIONS[m.kind].tempo + ')';
+    // Only rebuild the grid choices when the kind of meter changes, so a
+    // 3/4 -> 4/4 switch keeps whatever grid you had picked.
+    if(force || m.kind !== currentMeterKind){
+      buildNoteGrid(m.kind);
+      currentMeterKind = m.kind;
+    }
+    updateGridWarning();
     if(isPlaying) resyncMetronome();
-  });
+  }
+
+  timeSig.addEventListener('change', () => applyMeter(false));
+  noteGridSelect.addEventListener('change', updateGridWarning);
+  toleranceSelect.addEventListener('change', updateGridWarning);
+  applyMeter(true);
 
   tapTempoBtn.addEventListener('click', () => {
     const now = performance.now();
@@ -633,7 +706,12 @@
       const result = detectTempo(audioBuffer);
       if(result){
         setBpm(result.bpm);
-        detectNote.textContent = 'Suggested ' + result.bpm + ' BPM — nudge it with +/- if it feels off, then hit "Set beat 1 now" once playing to line up the grid.';
+        let msg = 'Suggested ' + result.bpm + ' BPM — nudge it with +/- if it feels off, then hit "Set beat 1 now" once playing to line up the grid.';
+        const meterInfo = METERS[timeSig.value];
+        if(meterInfo && meterInfo.kind === 'compound'){
+          msg += ' In ' + timeSig.value + ' the tempo counts dotted-quarter beats: if this number is about 3x what you count as a beat, divide it by 3.';
+        }
+        detectNote.textContent = msg;
       } else {
         detectNote.textContent = "Couldn't find a clear tempo — try tap tempo instead.";
       }
