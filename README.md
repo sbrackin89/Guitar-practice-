@@ -38,10 +38,11 @@ Load a backing track, set its tempo, lock the beat grid, then play guitar along.
 | **Enable / Disable microphone** | Turns mic listening on or off. Your browser will ask for permission the first time. |
 | **Reset stats** | Clears the notes-heard count, averages, and history dots. |
 | **Microphone input** (dropdown) | Appears only when more than one input is available (for example the iPad's built-in mic plus a headset). Pick which one to use. It refreshes automatically when you plug or unplug a device. |
-| **Cancel track echo** (checkbox) | Reduces the backing track leaking into the mic when you use the speaker. On iPad this can lower the track volume while you play, since iOS treats it like a voice call. Leave it off if you use headphones. |
+| **Mic boost** | Amplifies the raw mic signal before anything else processes it, from 1.0x (off) up to 10x. Use this when a mic is just quiet overall — a wired headset's inline mic, for instance, is built for voice close to your mouth and often picks up a guitar held at a normal playing distance far too faintly. Raise it while watching the input level bar until strums register clearly. Leave it at 1.0x for a mic that's already reading at a normal level, like the iPad's own mic. |
+| **Cancel track echo** (checkbox) | Reduces the backing track leaking into the mic when you use the speaker. On iPad this can lower the track volume while you play, since iOS treats it like a voice call. Leave it off if you use headphones — if a headset mic seems too quiet, try Mic boost instead of this. |
 | **Timing tolerance** | How close counts as "on the beat": **Tight** ±40ms, **Normal** ±70ms, **Loose** ±100ms. |
 | **Note grid** | Which timing targets your notes are measured against, in terms of the beat. The choices change with the time signature. **Simple time** (2/4, 3/4, 4/4, 5/4): Quarter notes, Eighth notes, Eighth-note triplets, Sixteenth notes. **Compound time** (6/8, 9/8, 12/8): Dotted-quarter beats, Eighth notes (3 per beat), Sixteenth notes (6 per beat). **7/8**: Eighth notes, Sixteenth notes. Affects scoring only; the click and light stay on the beat. If the targets end up closer together than twice your tolerance, a warning appears, since everything would read "On beat." |
-| **Sensitivity** | How easily a strum is detected: **Low** (loud or close mic), **Medium**, **High** (quiet or distant mic). |
+| **Sensitivity** | How big a rise in volume, relative to background noise, counts as a note: **Low** (loud or close mic), **Medium**, **High** (quiet or distant mic). This works on the signal *after* Mic boost — if a mic is so quiet that even High sensitivity isn't catching anything, raise Mic boost first, then adjust sensitivity. |
 
 **What you see while playing**
 
