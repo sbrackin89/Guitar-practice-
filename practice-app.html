@@ -320,6 +320,12 @@
       </div>
     </div>
     <div class="row">
+      <div class="field" style="min-width:160px;">
+        <div class="label">mic boost (<span id="micGainReadout">1.0</span>x)</div>
+        <input type="range" id="micGainSlider" min="1" max="10" step="0.5" value="1" style="width:140px;">
+      </div>
+    </div>
+    <div class="row">
       <label style="display:flex; align-items:center; gap:8px; font-size:0.85rem; color: var(--text-dim); cursor:pointer;">
         <input type="checkbox" id="echoCancelToggle" style="width:16px; height:16px; accent-color: var(--brass);">
         Cancel track echo
@@ -421,7 +427,7 @@
   let rafId = null;
 
   // mic state
-  let micStream = null, micSource = null, analyser = null, micData = null;
+  let micStream = null, micSource = null, analyser = null, micData = null, micPreGain = null;
   let micRafId = null;
   let energyHistory = [];
   let lastOnsetCtxTime = -Infinity;
@@ -460,6 +466,14 @@
   const micNote = $('micNote');
   const micDeviceRow = $('micDeviceRow');
   const micDeviceSelect = $('micDeviceSelect');
+  const micGainSlider = $('micGainSlider');
+  const micGainReadout = $('micGainReadout');
+
+  micGainSlider.addEventListener('input', () => {
+    const v = parseFloat(micGainSlider.value) || 1;
+    micGainReadout.textContent = v.toFixed(1);
+    if(micPreGain) micPreGain.gain.value = v;
+  });
   const calibBtn = $('calibBtn');
   const calibInput = $('calibInput');
   const calibNote = $('calibNote');
@@ -1041,6 +1055,7 @@
     if(micRafId) cancelAnimationFrame(micRafId);
     if(onsetWorkletNode){ onsetWorkletNode.disconnect(); onsetWorkletNode = null; }
     if(analyser){ try{ analyser.disconnect(); }catch(e){} analyser = null; }
+    if(micPreGain){ try{ micPreGain.disconnect(); }catch(e){} micPreGain = null; }
     if(micSource){ try{ micSource.disconnect(); }catch(e){} micSource = null; }
     if(micStream){ micStream.getTracks().forEach(tr => tr.stop()); micStream = null; }
   }
@@ -1057,15 +1072,18 @@
       if(deviceId) audioConstraints.deviceId = { exact: deviceId };
       micStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
       micSource = ctx.createMediaStreamSource(micStream);
+      micPreGain = ctx.createGain();
+      micPreGain.gain.value = parseFloat(micGainSlider.value) || 1;
+      micSource.connect(micPreGain);
 
       onsetWorkletNode = await setupOnsetWorklet(ctx);
       if(onsetWorkletNode){
-        micSource.connect(onsetWorkletNode);
+        micPreGain.connect(onsetWorkletNode);
         micNote.textContent = 'Microphone active (precise mode) — watch the level meter below while you play.';
       } else {
         analyser = ctx.createAnalyser();
         analyser.fftSize = 1024;
-        micSource.connect(analyser);
+        micPreGain.connect(analyser);
         micData = new Float32Array(analyser.fftSize);
         energyHistory = [];
         micLoop();
