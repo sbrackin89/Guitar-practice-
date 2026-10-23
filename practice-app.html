@@ -383,7 +383,7 @@
   </div>
 
   <!-- SETTINGS PANEL -->
-  <div class="panel">
+  <div class="panel hidden" id="settingsPanel">
     <h2>4 · Settings <span>calibration, diagnostics, and other things you won't need often</span></h2>
     <div class="row">
       <button id="testToneBtn">Test speaker (beep)</button>
@@ -462,6 +462,7 @@
   const timeNow = $('timeNow');
   const timeTotal = $('timeTotal');
   const micPanel = $('micPanel');
+  const settingsPanel = $('settingsPanel');
   const micBtn = $('micBtn');
   const micNote = $('micNote');
   const micDeviceRow = $('micDeviceRow');
@@ -602,6 +603,7 @@
     tempoControls.style.display = 'flex';
     transportPanel.classList.remove('hidden');
     micPanel.classList.remove('hidden');
+    settingsPanel.classList.remove('hidden');
     detectNote.textContent = 'Loaded. Try "Auto-detect tempo", or set the BPM and time signature by hand.';
   });
 
