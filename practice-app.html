@@ -1078,7 +1078,12 @@
       micPreGain.gain.value = parseFloat(micGainSlider.value) || 1;
       micSource.connect(micPreGain);
 
-      onsetWorkletNode = await setupOnsetWorklet(ctx);
+      try{
+        onsetWorkletNode = await setupOnsetWorklet(ctx);
+      }catch(workletErr){
+        onsetWorkletNode = null;
+        workletReady = false; // this context never actually got a working registration — don't skip addModule on a retry
+      }
       if(onsetWorkletNode){
         micPreGain.connect(onsetWorkletNode);
         micNote.textContent = 'Microphone active (precise mode) — watch the level meter below while you play.';
